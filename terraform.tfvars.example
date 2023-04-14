@@ -1,0 +1,11 @@
+# project_id          = "my-project"
+# region              = "us-central1"
+# public_key_path     = "~/.ssh/vmseries-tutorial.pub"
+# mgmt_allow_ips      = ["0.0.0.0/0"]
+prefix              = "panw"
+create_workload_vm  = true
+vmseries_image_name = "vmseries-flex-bundle2-1017"
+cidr_mgmt           = "10.0.0.0/24"
+cidr_untrust        = "10.0.1.0/24"
+cidr_trust          = "10.0.2.0/24"
+cidr_ha2            = "10.0.3.0/24"
