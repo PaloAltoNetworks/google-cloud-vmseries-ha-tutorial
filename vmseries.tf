@@ -86,8 +86,9 @@ resource "local_file" "bootstrap_xml" {
 }
 
 module "iam_service_account" {
-  source             = "PaloAltoNetworks/vmseries-modules/google//modules/iam_service_account/"
+  source             = "github.com/PaloAltoNetworks/terraform-google-vmseries-modules//modules/iam_service_account?ref=autoscale_regional_migs-update"
   service_account_id = "${local.prefix}vmseries-sa"
+  project_id         = var.project_id
 }
 
 # Create storage bucket to bootstrap VM-Series.
