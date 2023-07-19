@@ -86,7 +86,7 @@ resource "local_file" "bootstrap_xml" {
 }
 
 module "iam_service_account" {
-  source             = "github.com/PaloAltoNetworks/terraform-google-vmseries-modules//modules/iam_service_account?ref=autoscale_regional_migs-update"
+  source             = "PaloAltoNetworks/vmseries-modules/google//modules/iam_service_account/"
   service_account_id = "${local.prefix}vmseries-sa"
   project_id         = var.project_id
 }
