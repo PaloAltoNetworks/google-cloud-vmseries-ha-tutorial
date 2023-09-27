@@ -115,6 +115,7 @@ module "bootstrap" {
 # Create 2 VM-Series firewalls and bootstrap their configuration.
 # ----------------------------------------------------------------------------------------------------------------
 
+# Generate random string to append to VM-Series name
 resource "random_string" "vmseries" {
   length           = 6
   min_numeric      = 3
@@ -122,6 +123,8 @@ resource "random_string" "vmseries" {
   special          = false
 }
 
+
+# Create VM-Series firewalls
 module "vmseries" {
   source                = "PaloAltoNetworks/vmseries-modules/google//modules/vmseries/"
   for_each              = local.vmseries_vms
