@@ -115,10 +115,17 @@ module "bootstrap" {
 # Create 2 VM-Series firewalls and bootstrap their configuration.
 # ----------------------------------------------------------------------------------------------------------------
 
+resource "random_string" "vmseries" {
+  length           = 6
+  min_numeric      = 3
+  min_lower        = 3
+  special          = false
+}
+
 module "vmseries" {
   source                = "PaloAltoNetworks/vmseries-modules/google//modules/vmseries/"
   for_each              = local.vmseries_vms
-  name                  = "${local.prefix}${each.key}"
+  name                  = "${local.prefix}${each.key}-${random_string.vmseries.id}"
   zone                  = each.value.zone
   ssh_keys              = fileexists(var.public_key_path) ? "admin:${file(var.public_key_path)}" : ""
   vmseries_image        = var.vmseries_image_name
@@ -149,7 +156,7 @@ module "vmseries" {
     {
       subnetwork = module.vpc_ha2.subnets_self_links[0]
       private_ip = each.value.ha2_private_ip
-    },
+    }
   ]
 
   depends_on = [
