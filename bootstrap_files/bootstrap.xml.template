@@ -729,7 +729,7 @@
                     <translated-address>loopback-probes</translated-address>
                   </dynamic-destination-translation>
                   <description>External GCP load balancer health checks to VM-Series untrust.</description>
-                  <to-interface>ethernet1/1</to-interface>
+                  <to-interface>loopback.1</to-interface>
                 </entry>
                 <entry name="health-check-intlb" uuid="7a44c635-556d-45ac-92e6-2c0f606ff2bb">
                   <to>
