@@ -68,13 +68,43 @@ When no further changes are necessary in the configuration, deploy the resources
 
     Outputs:
 
-    EXTERNAL_LB_IP    = "ssh paloalto@1.1.1.1 -i ~/.ssh/vmseries-tutorial"
+    EXTERNAL_LB_IP     = "ssh paloalto@1.1.1.1 -i ~/.ssh/vmseries-tutorial"
     EXTERNAL_LB_URL    = "https://1.1.1.1"
     VMSERIES_ACTIVE    = "https://2.2.2.2"
     VMSERIES_PASSIVE   = "https://3.3.3.3"
+    VMSERIES_SSH       = "ssh admin@1.1.1.1 -i ~/.ssh/vmseries-tutorial" 
     ```
 
-## Test the deployment
+## Access the Active VM-Series Firewall
+
+To access the VM-Series user interface, a password must be set for the `admin` user.
+
+> [!CAUTION]  
+> After the Terraform apply completes, it may take an additional 10 minutes for the VM-Series to become responsive.
+
+1. SSH to the *active* VM-Series firewall using the `VMSERIES_SSH` output value. 
+
+    ```
+    ssh admin@1.1.1.1 -i ~/.ssh/vmseries-tutorial"
+    ```
+
+2. On the *active* VM-Series, set a password for the `admin` username. 
+
+    ```
+    configure
+    set mgt-config users admin password
+    ```
+
+3. Commit the changes.
+
+    ```
+    commit
+    ```
+
+4. Enter `exit` twice to terminate the session.
+
+
+## Test the Deployment
 
 We can now test the deployment by accessing the `workload-vm` that resides in the trust VPC network.  All of the `workload-vm` traffic is routed directly through the VM-Series HA pair. 
 
