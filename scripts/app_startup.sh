@@ -19,5 +19,5 @@ done
 echo "internet connection available!"
 sudo apt-get install php -y
 sudo rm -f /var/www/html/index.html
-sudo wget -O /var/www/html/index.php https://raw.githubusercontent.com/wwce/terraform/master/azure/transit_2fw_2spoke_common/scripts/showheaders.php
+sudo wget -O /var/www/html/index.php https://raw.githubusercontent.com/PaloAltoNetworks/google-cloud-vmseries-ha-tutorial/main/scripts/showheaders.php
 sudo systemctl restart apache2

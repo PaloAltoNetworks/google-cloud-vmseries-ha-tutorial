@@ -192,7 +192,7 @@ In Cloud Shell, deploy new virtual machine (`app-vm`) to a subnet within the tru
         --machine-type=n2-standard-2 \
         --image-project=debian-cloud \
         --image-family=debian-11 \
-        --metadata startup-script-url=https://raw.githubusercontent.com/mattmclimans/temptest/main/scripts/app_startup.sh
+        --metadata startup-script-url=https://raw.githubusercontent.com/PaloAltoNetworks/google-cloud-vmseries-ha-tutorial/main/scripts/app_startup.sh
     ```
 
 3. Record the `INTERNAL_IP` address of the new virtual machine.
