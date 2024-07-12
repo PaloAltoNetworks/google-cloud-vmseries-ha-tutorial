@@ -86,15 +86,17 @@ resource "local_file" "bootstrap_xml" {
 }
 
 module "iam_service_account" {
-  source             = "PaloAltoNetworks/vmseries-modules/google//modules/iam_service_account/"
+  source             = "PaloAltoNetworks/swfw-modules/google//modules/iam_service_account"
+  version            = "~> 2.0"
   service_account_id = "${local.prefix}vmseries-sa"
   project_id         = var.project_id
 }
 
 # Create storage bucket to bootstrap VM-Series.
 module "bootstrap" {
+  source          = "PaloAltoNetworks/swfw-modules/google//modules/bootstrap"
+  version         = "~> 2.0"
   for_each        = local.vmseries_vms
-  source          = "PaloAltoNetworks/vmseries-modules/google//modules/bootstrap/"
   location        = "US"
   name_prefix     = local.prefix
   service_account = module.iam_service_account.email
@@ -126,7 +128,8 @@ resource "random_string" "vmseries" {
 
 # Create VM-Series firewalls
 module "vmseries" {
-  source                = "PaloAltoNetworks/vmseries-modules/google//modules/vmseries/"
+  source                = "PaloAltoNetworks/swfw-modules/google//modules/vmseries/"
+  version               = "~> 2.0"
   for_each              = local.vmseries_vms
   name                  = "${local.prefix}${each.key}-${random_string.vmseries.id}"
   zone                  = each.value.zone

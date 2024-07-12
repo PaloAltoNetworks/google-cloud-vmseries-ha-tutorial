@@ -163,95 +163,154 @@ We can now test the deployment by accessing the `workload-vm` that resides in th
     ```
 
 ## (Optional) Onboard Internet Applications
-You can onboard and secure multiple internet facing applications through the VM-Series firewall.  This is done by mapping forwarding rules on the external load balancer to NAT policies defined on the VM-Series firewall.
+You can secure multiple internet facing applications through the VM-Series firewall. This is done by mapping the addreses/ports from external forwarding rules to NAT policies defined on the VM-Series firewall.
 
-1. In Cloud Shell, deploy a virtual machine into a subnet within the trust VPC network.  The virtual machine in this example runs a sample application for you.
-   ```
-    gcloud compute instances create my-app2 \
-        --network-interface subnet="panw-us-central1-trust",no-address \
-        --zone=us-central1-a \
-        --image-project=panw-gcp-team-testing \
-        --image=ubuntu-2004-lts-apache-ac \
-        --machine-type=f1-micro
-   ```
+In this section, onboard a new web application by creating a forwarding rule on the external load balancer along with a corresponding NAT policy on the VM-Series. 
 
-2. Record the `INTERNAL_IP` address of the new virtual machine.
+
+### Create an application VM
+In Cloud Shell, deploy new virtual machine (`app-vm`) to a subnet within the trust VPC network.  The `app-vm` installs a simple web application through its metadata startup script (`/scripts/app_startup.sh`).
+
+1. In Cloud Shell, set environment variables for your `PROJECT_ID`, `REGION`, `ZONE`, & `SUBNET` for the application environment.
+
+    <p><pre>
+    export <i><b>PROJECT_ID</b>=YOUR_PROJECT_ID</i>
+    export <i><b>REGION</b>=YOUR_REGION</i>
+    export <i><b>ZONE</b>=YOUR_ZONE</i>
+    export <i><b>SUBNET</b>=SUBNET_NAME</i></pre></p>
+    
+    > The `app-vm` can be deployed to any subnet in the `trust-vpc`, or to any VPC connected & routed to the `trust-vpc` (i.e. VPC peering).
+
+
+2. Create the `app-vm` virtual machine. 
+
     ```
-    NAME: my-app2
+    gcloud compute instances create app-vm \
+        --project=$PROJECT_ID \
+        --network-interface subnet=$SUBNET,no-address \
+        --zone=$ZONE \
+        --machine-type=n2-standard-2 \
+        --image-project=debian-cloud \
+        --image-family=debian-11 \
+        --metadata startup-script-url=https://raw.githubusercontent.com/mattmclimans/temptest/main/scripts/app_startup.sh
+    ```
+
+3. Record the `INTERNAL_IP` address of the new virtual machine.
+
+    **Output**
+    <p><pre>
+    NAME: app-vm
     ZONE: us-central1-a
     MACHINE_TYPE: f1-micro
     PREEMPTIBLE:
-    INTERNAL_IP: 10.0.2.4
+    INTERNAL_IP: <i><b>10.0.2.4</b></i>
     EXTERNAL_IP:
-    STATUS: RUNNING
+    STATUS: RUNNING</pre></p>
+
+> [!NOTE]
+> In the VM-Series NAT policy, the `INTERNAL_IP` will be set as the *translated* packet's destination address.  
+
+### Create Forwarding Rule
+Create a forwarding rule (`fwd-rule-app-vm`) on the external load balancer.  This rule will be used to distribute internet inbound traffic destined to the `app-vm` through the VM-Series untrust interfaces. 
+
+1. Assign the name of the external load balancer's backend service to an environment variable named `EXTERNAL_LB`.
+
+    ```
+    export EXTERNAL_LB=$(gcloud compute backend-services list \
+        --filter="loadBalancingScheme:EXTERNAL" \
+        --format="get(name)")
+
+    echo $EXTERNAL_LB
     ```
 
-3. Create a new forwarding rule on the external TCP load balancer. 
+2. Create a new forwarding rule on the external load balancer.
+
     ```
-    gcloud compute forwarding-rules create panw-vmseries-extlb-rule2 \
+    gcloud compute forwarding-rules create fwd-rule-app-vm \
         --load-balancing-scheme=EXTERNAL \
-        --region=us-central1 \
+        --region=$REGION \
         --ip-protocol=L3_DEFAULT \
         --ports=ALL \
-        --backend-service=panw-vmseries-extlb
+        --backend-service=$EXTERNAL_LB
     ```
 
-4.  Retrieve and record the address of the new forwarding rule.
+    
+3. Retrieve the forwarding rule's address.
+
     ```
-    gcloud compute forwarding-rules describe panw-vmseries-extlb-rule2 \
-        --region=us-central1 \
+    gcloud compute forwarding-rules describe fwd-rule-app-vm \
+        --region=$REGION \
         --format='get(IPAddress)'
     ```
+    
+> [!NOTE]
+> In the VM-Series NAT policy, the forwarding rule address will be set as the *original* packet's destination address.  
 
-    (output)
-    ```
-    34.172.143.223
-    ```
+### Create NAT Policy
+On the VM-Series, create a NAT policy to translate traffic destined the forwarding rule (`fwd-rule-app-vm`) to the internal IPv4 address of the `app-vm` IP address (i.e. `10.0.2.4`).
 
-5. On the active VM-Series, go to **Policies → NAT**.  Click **Add** and enter a name for the rule.
+1. On the *active* VM-Series, go to **Policies → NAT**.  
 
-6. Configure the **Original Packet** as follows:
-   1. **Source Zone**: `untrust`
-   2. **Destination Zone**: `untrust`
-   3. **Service**: `service-http`
-   4. **Destination Address**:  Set to the forwarding rule's IP address (i.e. `34.172.143.223`).
-        <img src="images/nat1.png" width="630">
+2. Click **Add** and enter a name for the rule (i.e. `inbound-app-vm`). 
 
-7. In the **Translated Packet** tab, configure the **Destination Address Translation** as follows:
-   1. **Translated Type**: `Static IP`
-   2. **Translated Address**: Set to the `INTERNAL_IP` of the sample application (i.e. `10.0.2.4`). 
-        <img src="images/nat2.png" width="630">
+2. Configure the **Original Packet** as follows:
 
-8. Click **OK** and Commit the changes.
-9. Access the sample application using the forwarding rule's address.
+    | Field                   | Value                                                        |
+    | ----------------------- | ------------------------------------------------------------ |
+    | **Source Zone**         | `untrust`                                                    |
+    | **Destination Zone**    | `untrust`                                                    |
+    | **Service**             | `service-http`                                               |
+    | **Destination Address** | The forwarding rule's IPv4 adddress (i.e. `34.172.143.223`). |
+
+    <img src="images/nat1.png" width="630">
+
+3. In the **Translated Packet** tab, configure the **Destination Address Translation** as follows:
+
+    | Field                  | Value                                               |
+    | ---------------------- | --------------------------------------------------- |
+    | **Translation Type**   | `Static IP` or `Dynamic IP`                         |
+    | **Translated Address** | The `INTERNAL_IP` of the `app-vm` (i.e. `10.0.2.4`) |
+
+    <img src="images/nat2.png" width="630">
+
+4. Click **OK** to create the rule.
+
+5. Click **Commit** to apply the changes.
+
+6. After the commit completes, access the sample application using the address of the forwarding rule.
     ```
     http://34.172.143.223
     ```
     <img src="images/image5.png" width="400">
 
+7. On the *active* VM-Series, go to **Monitor → Traffic** to view the traffic destined to the `app-vm`. 
 
 
 ## Clean up
 
 To avoid incurring charges to your Google Cloud account for the resources you created in this tutorial, delete all the resources when you no longer need them.
 
-1. (Optional) If you onboarded an additional application, delete the forwarding rule and sample application machine. 
+1. (Optional) If you did the **Onboard Internet Applications** section, delete the forwarding rule (`fwd-rule-app-vm`) and application VM (`app-vm`).
+    
     ```
-    gcloud compute forwarding-rules delete panw-vmseries-extlb-rule2 \
-        --region=us-central1
+    gcloud compute forwarding-rules delete fwd-rule-app-vm \
+        --region=$REGION \
+        --quiet
 
-    gcloud compute instances delete my-app2 \
-        --zone=us-central1-a
+    gcloud compute instances delete app-vm \
+        --zone=$ZONE \
+        --quiet
     ```
 
-2. Run the following command.
+2. Run the following command to delete the resources.
+
     ```
     terraform destroy
     ```
+    
+    Enter `yes` to delete the resources.
 
-3. At the prompt to perform the actions, enter `yes`. 
-   
-   After all the resources are deleted, Terraform displays the following message:
+3. After all the resources are deleted, Terraform displays the following message.
 
     ```
     Destroy complete!
