@@ -62,7 +62,7 @@ data "google_compute_subnetwork" "ha2" {
 # Modify bootstrap.xml to reflect the VPC networks.
 data "template_file" "bootstrap_xml" {
   for_each = local.vmseries_vms
-  template = file("bootstrap_files/bootstrap.xml.template")
+  template = file("${path.module}/bootstrap_files/bootstrap.xml.template")
 
   vars = {
     external_lb_ip            = google_compute_address.external_nat_ip.address
