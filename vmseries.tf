@@ -81,7 +81,7 @@ data "template_file" "bootstrap_xml" {
 
 resource "local_file" "bootstrap_xml" {
   for_each = local.vmseries_vms
-  filename = "tmp/bootstrap-${each.key}"
+  filename = "${path.module}/tmp/bootstrap-${each.key}"
   content  = data.template_file.bootstrap_xml[each.key].rendered
 }
 
@@ -102,9 +102,9 @@ module "bootstrap" {
   service_account = module.iam_service_account.email
 
   files = {
-    "bootstrap_files/init-cfg.txt.sample" = "config/init-cfg.txt"
-    "tmp/bootstrap-${each.key}"           = "config/bootstrap.xml"
-    "bootstrap_files/authcodes"           = "license/authcodes"
+    "${path.module}/bootstrap_files/init-cfg.txt.sample" = "config/init-cfg.txt"
+    "${path.module}/tmp/bootstrap-${each.key}"           = "config/bootstrap.xml"
+    "${path.module}/bootstrap_files/authcodes"           = "license/authcodes"
   }
 
   depends_on = [
