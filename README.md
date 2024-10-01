@@ -19,20 +19,67 @@ In this model, each VM-Series firewall belongs to an unmanaged instance group. O
 
 ![Overview Diagram](images/diagram.png)
 
-| Resource | Description | 
-| -------- | ----------- | 
-| **VM-Series** | <ul><li>2 x VM-Series are deployed to separate zones within a region.</li><li>Each firewall belongs to an unmanaged instance group.</li><li>Each instance group is a backend service of an internal load balancer.</li></ul> |
-| **External LB** | An external pass-through load balancer with two forwarding rules:<ul><li><b>Rule 1:</b> Forwards internet inbound traffic to the VM-Series untrust interface.</li><li><b>Rule 2:</b>Forwards outbound traffic from the untrust interfaces to the internet.</li></ul> |
-| **Internal LB** | An internal pass-through load balancer with a single forwarding rule.  Traffic from workload networks use the load balancer's forwarding rule as the next hop within their VPC route table. | 
 
-The following table describes the purpose of each VPC network. 
 
-| VPC Name | Description | 
-| -------- | ----------- |
-| **Mgmt VPC** | Contains the VM-Series MGT interfaces.  This interface also serves as the HA1 interface. |
-| **HA2 VPC** | Contains the VM-Series HA2 interfaces. |
-| **Untrust VPC** | Serves as the internet gateway for resources within the trust VPC. | 
-| **Trust VPC** | Contains the workloads protected by the VM-Series.  This VPC can also serve as a hub network with multiple VPCs peered to it. |
+<table border="1"> <!-- Adding a border for visibility -->
+    <tr>
+        <td colspan="2"><b>Resources</b></td>
+    </tr>
+    <tr>
+        <td><code>VM-Series</code></td>
+        <td>
+            <ul>
+                <li>2 x VM-Series are deployed to separate zones within a region.</li>
+                <li>Each firewall belongs to an unmanaged instance group.</li>
+                <li>Each instance group is a backend service of an internal load balancer.</li>
+            </ul>
+        </td>
+    </tr>
+    <tr>
+        <td><code>External LB</code></td>
+        <td>
+            An external pass-through load balancer with two forwarding rules:
+            <ul>
+                <li><b>Rule 1:</b> Forwards internet inbound traffic to the VM-Series untrust interface.</li>
+                <li><b>Rule 2:</b> Forwards outbound traffic from the untrust interfaces to the internet.</li>
+            </ul>
+        </td>
+    </tr>
+    <tr>
+        <td><code>Internal LB</code></td>
+        <td>
+            An internal pass-through load balancer with a single forwarding rule. Traffic from workload networks use the load balancer's forwarding rule as the next hop within their VPC route table.
+        </td>
+    </tr>
+    <tr>
+        <td colspan="2"><b>VPC Networks</b></td>
+    </tr>
+    <tr>
+        <td><code>Mgmt VPC</code></td>
+        <td>
+            Contains the VM-Series MGT interfaces. This interface also serves as the HA1 interface.
+        </td>
+    </tr>
+    <tr>
+        <td><code>HA2 VPC</code></td>
+        <td>
+            Contains the VM-Series HA2 interfaces.
+        </td>
+    </tr>
+    <tr>
+        <td><code>Untrust VPC</code></td>
+        <td>
+            Serves as the internet gateway for resources within the trust VPC.
+        </td>
+    </tr>
+    <tr>
+        <td><code>Trust VPC</code></td>
+        <td>
+            Contains the workloads protected by the VM-Series. This VPC can also serve as a hub network with multiple VPCs peered to it.
+        </td>
+    </tr>
+</table>
+
 
 
 > [!IMPORTANT]
