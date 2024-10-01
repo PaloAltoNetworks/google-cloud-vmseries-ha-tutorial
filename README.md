@@ -14,7 +14,7 @@ The autoscale architecture is recommended in most use-cases.  Please see [VM-Ser
 In this model, each VM-Series firewall belongs to an unmanaged instance group. Only the primary VM-Series firewall receives network traffic from Google Cloud load balancers. The health check configured on the load balancers determines the HA state of the primary VM-Series firewall. If the health check fails on the primary VM-Series firewall, the load balancers carry the active sessions to the secondary VM-Series firewall. At that point, the secondary VM-Series firewall becomes the primary firewall.
 
 > [!NOTE]
-> During a failure event, sessions are carried to the secondary firewall through [connection tracking](https://cloud.google.com/load-balancing/docs/network/networklb-backend-service#tracking-mode) on the load balancers.
+> During a failure event, sessions are carried between the firewalls via [connection tracking](https://cloud.google.com/load-balancing/docs/network/networklb-backend-service#tracking-mode) on the load balancers.
 
 
 ![Overview Diagram](images/diagram.png)
