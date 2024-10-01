@@ -1,22 +1,42 @@
 # VM-Series Active/Passive HA on Google Cloud
 
-This tutorial creates a pair of Active/Passive VM-Series firewalls on Google Cloud.   This architecture provides the following benefits:
-* Configuration sync between the VM-Series firewalls.
-* State synchronization between instances to maintain state on failover.
+This tutorial creates a pair of Active/Passive VM-Series firewalls on Google Cloud.  This deployment model provides solutions for the following key use-cases:
 
+* Maintaining session continuity through stateful failover between the VM-Series firewalls.
+* Terminating IPsec tunnels directly to the VM-Series firewall through the external load balancer.
+* Preserving the original client IP address for internet inbound traffic to internal applications protected by the VM-Series firewalls.
 
 The autoscale architecture is recommended in most use-cases.  Please see [VM-Series on Google Cloud](https://cloud.google.com/architecture/partners/palo-alto-networks-ngfw) for more information on VM-Series deployment models.
 
 
 ## Architecture
 
-This deployment model provides solutions for the following key use-cases:
+In this model, each VM-Series firewall belongs to an unmanaged instance group. Only the primary VM-Series firewall receives network traffic from Google Cloud load balancers. The health check configured on the load balancers determines the HA state of the primary VM-Series firewall. If the health check fails on the primary VM-Series firewall, the load balancers carry the active sessions to the secondary VM-Series firewall. At that point, the secondary VM-Series firewall becomes the primary firewall.
 
-* IPSec termination of site-to-site VPNs.
-* Legacy applications that need visibility of the original source client IP (No SNAT solution) for inbound traffic flows.
-* Requirements for session fail-over on failure of VM-Series.
+> [!NOTE]
+> During a failure event, sessions are carried to the secondary firewall through [connection tracking](https://cloud.google.com/load-balancing/docs/network/networklb-backend-service#tracking-mode) on the load balancers.
+
 
 ![Overview Diagram](images/diagram.png)
+
+| Resource | Description | 
+| -------- | ----------- | 
+| **VM-Series** | <ul><li>2 x VM-Series are deployed to separate zones within a region.</li><li>Each firewall belongs to an unmanaged instance group.</li><li>Each instance group is a backend service of an internal load balancer.</li></ul> |
+| **External LB** | An external pass-through load balancer with two forwarding rules:<ul><li><b>Rule 1:</b> Forwards internet inbound traffic to the VM-Series untrust interface.</li><li><b>Rule 2:</b>Forwards outbound traffic from the untrust interfaces to the internet.</li></ul> |
+| **Internal LB** | An internal pass-through load balancer with a single forwarding rule.  Traffic from workload networks use the load balancer's forwarding rule as the next hop within their VPC route table. | 
+
+The following table describes the purpose of each VPC network. 
+
+| VPC Name | Description | 
+| -------- | ----------- |
+| **Mgmt VPC** | Contains the VM-Series MGT interfaces.  This interface also serves as the HA1 interface. |
+| **HA2 VPC** | Contains the VM-Series HA2 interfaces. |
+| **Untrust VPC** | Serves as the internet gateway for resources within the trust VPC. | 
+| **Trust VPC** | Contains the workloads protected by the VM-Series.  This VPC can also serve as a hub network with multiple VPCs peered to it. |
+
+
+> [!IMPORTANT]
+> After deployment, the load balancer's health checks will only pass on the **active** VM-Series firewall.  This is because the dataplane of the passive firewall is inactive and is unable to pass the health checks.  During a failure event, the passive firewall becomes active and the health checks will pass. 
 
 ## Prepare for deployment
 
@@ -106,18 +126,26 @@ To access the VM-Series user interface, a password must be set for the `admin` u
 
 ## Test the Deployment
 
-We can now test the deployment by accessing the `workload-vm` that resides in the trust VPC network.  All of the `workload-vm` traffic is routed directly through the VM-Series HA pair. 
+You can now test the deployment by accessing the `workload-vm` that resides in the trust VPC network.  All of the `workload-vm` traffic is routed directly through the VM-Series HA pair. 
 
 1. Use the output `EXTERNAL_LB_URL` to access the web service on the `workload-vm` through the VM-Series firewall.
 
     <img src="images/web.png" width="500">
 
+> [!NOTE]
+> The address within `EXTERNAL_LB_URL` is a forwarding rule on the external load balancer.  This rule forwards requests from the internet to the VM-Series untrust interface before it is allowed to the `workload-vm`.  
+
+
 2. Use the output `EXTERNAL_LB_SSH`  to open an SSH session through the VM-Series to the `workload-vm`.  
     ```
     ssh paloalto@1.1.1.1 -i ~/.ssh/vmseries-tutorial
     ```
+> [!NOTE]
+> Like the web traffic, this traffic is forwarded through the VM-Series for inspection prior to reaching the `workload-vm`. 
+
 
 3. On the workload VM, run a preloaded script to test the failover mechanism across the VM-Series firewalls.
+
     ```
     /network-check.sh
     ```
@@ -130,11 +158,10 @@ We can now test the deployment by accessing the `workload-vm` that resides in th
     Wed Mar 12 16:40:21 UTC 2023 -- Online -- Source IP = x.x.x.x
     ```
 
+> [!NOTE]
+> Egress traffic from the `workload-vm` is routed to the internal load balancer's forwarding rule.  The VM-Series inspects the traffic, and then translates the request to the egress forwarding rule on the external load balancer. 
+
 4. Login to the VM-Series firewalls using the `VMSERIES_ACTIVE` and `VMSERIES_PASSIVE` output values.
-    ```
-    UN: admin
-    PW: Pal0Alt0@123 
-    ```
 
 5. After login, take note of the HA Status in the bottom right corner on each firewall.
 
@@ -178,8 +205,9 @@ In Cloud Shell, deploy new virtual machine (`app-vm`) to a subnet within the tru
     export <i><b>REGION</b>=YOUR_REGION</i>
     export <i><b>ZONE</b>=YOUR_ZONE</i>
     export <i><b>SUBNET</b>=SUBNET_NAME</i></pre></p>
-    
-    > The `app-vm` can be deployed to any subnet in the `trust-vpc`, or to any VPC connected & routed to the `trust-vpc` (i.e. VPC peering).
+
+> [!TIP]  
+> The `app-vm` can be deployed to any subnet in the `trust-vpc`, or to any VPC connected & routed to the `trust-vpc` (i.e. VPC peering).
 
 
 2. Create the `app-vm` virtual machine. 
@@ -208,7 +236,8 @@ In Cloud Shell, deploy new virtual machine (`app-vm`) to a subnet within the tru
     STATUS: RUNNING</pre></p>
 
 > [!NOTE]
-> In the VM-Series NAT policy, the `INTERNAL_IP` will be set as the *translated* packet's destination address.  
+> In the VM-Series NAT policy, the `INTERNAL_IP` will be set as the **translated** packet's destination address.  
+
 
 ### Create Forwarding Rule
 Create a forwarding rule (`fwd-rule-app-vm`) on the external load balancer.  This rule will be used to distribute internet inbound traffic destined to the `app-vm` through the VM-Series untrust interfaces. 
@@ -244,7 +273,7 @@ Create a forwarding rule (`fwd-rule-app-vm`) on the external load balancer.  Thi
     ```
     
 > [!NOTE]
-> In the VM-Series NAT policy, the forwarding rule address will be set as the *original* packet's destination address.  
+> In the VM-Series NAT policy, the forwarding rule address will be set as the **original** packet's destination address.  
 
 ### Create NAT Policy
 On the VM-Series, create a NAT policy to translate traffic destined the forwarding rule (`fwd-rule-app-vm`) to the internal IPv4 address of the `app-vm` IP address (i.e. `10.0.2.4`).

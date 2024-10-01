@@ -17,7 +17,8 @@ locals {
       ha2_private_ip            = cidrhost(var.cidr_ha2, 2)
       ha2_subnet_mask           = cidrnetmask(var.cidr_ha2)
       ha2_gateway_ip            = data.google_compute_subnetwork.ha2.gateway_address
-      external_lb_ip            = google_compute_address.external_nat_ip.address
+      extlb_outbound_ip            = google_compute_address.extlb_outbound_ip.address
+      extlb_inbound_ip            = google_compute_address.extlb_inbound_ip.address
       workload_vm               = cidrhost(var.cidr_trust, 5)
     }
 
@@ -32,7 +33,8 @@ locals {
       ha2_private_ip            = cidrhost(var.cidr_ha2, 3)
       ha2_subnet_mask           = cidrnetmask(var.cidr_ha2)
       ha2_gateway_ip            = data.google_compute_subnetwork.ha2.gateway_address
-      external_lb_ip            = google_compute_address.external_nat_ip.address
+      extlb_outbound_ip            = google_compute_address.extlb_outbound_ip.address
+      extlb_inbound_ip            = google_compute_address.extlb_inbound_ip.address
       workload_vm               = cidrhost(var.cidr_trust, 5)
     }
   }
@@ -65,7 +67,8 @@ data "template_file" "bootstrap_xml" {
   template = file("${path.module}/bootstrap_files/bootstrap.xml.template")
 
   vars = {
-    external_lb_ip            = google_compute_address.external_nat_ip.address
+    extlb_outbound_ip            = google_compute_address.extlb_outbound_ip.address
+    extlb_inbound_ip          = google_compute_address.extlb_inbound_ip.address
     management_private_ip     = each.value.management_private_ip
     managementpeer_private_ip = each.value.managementpeer_private_ip
     untrust_private_ip        = each.value.untrust_private_ip
@@ -229,24 +232,45 @@ resource "google_compute_region_backend_service" "intlb" {
 }
 
 # ----------------------------------------------------------------------------------------------------------------
-# Create an external load balancer to distribute traffic to VM-Series trust interfaces.
+# Create an external load balancer to distribute internet inbound & outbound traffic to/from VM-Series untrust interfaces.
 # ----------------------------------------------------------------------------------------------------------------
 
-resource "google_compute_address" "external_nat_ip" {
-  name         = "${local.prefix}vmseries-extlb-ip"
+// Create forwarding rule for outbound internet traffic.
+resource "google_compute_address" "extlb_outbound_ip" {
+  name         = "${local.prefix}vmseries-extlb-outbound"
   address_type = "EXTERNAL"
 }
 
-resource "google_compute_forwarding_rule" "rule" {
-  name                  = "${local.prefix}vmseries-extlb-rule1"
+resource "google_compute_forwarding_rule" "outbound" {
+  name                  = "${local.prefix}vmseries-extlb-outbound"
   project               = var.project_id
   region                = var.region
   load_balancing_scheme = "EXTERNAL"
   all_ports             = true
-  ip_address            = google_compute_address.external_nat_ip.address
+  ip_address            = google_compute_address.extlb_outbound_ip.address
   ip_protocol           = "L3_DEFAULT"
   backend_service       = google_compute_region_backend_service.extlb.self_link
 }
+
+
+// Create forwarding rule for internet inbound traffic
+resource "google_compute_address" "extlb_inbound_ip" {
+  name         = "${local.prefix}vmseries-extlb-inbound"
+  address_type = "EXTERNAL"
+}
+
+resource "google_compute_forwarding_rule" "inbound" {
+  name                  = "${local.prefix}vmseries-extlb-inbound"
+  project               = var.project_id
+  region                = var.region
+  load_balancing_scheme = "EXTERNAL"
+  all_ports             = true
+  ip_address            = google_compute_address.extlb_inbound_ip.address
+  ip_protocol           = "L3_DEFAULT"
+  backend_service       = google_compute_region_backend_service.extlb.self_link
+}
+
+
 
 resource "google_compute_region_backend_service" "extlb" {
   provider              = google-beta
