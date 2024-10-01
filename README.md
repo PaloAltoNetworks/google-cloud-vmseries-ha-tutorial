@@ -100,7 +100,7 @@ When no further changes are necessary in the configuration, deploy the resources
 To access the VM-Series user interface, a password must be set for the `admin` user.
 
 > [!CAUTION]  
-> After the Terraform apply completes, it may take an additional 10 minutes for the VM-Series to become responsive.
+> After the apply completes, it may ~10 minutes for the VM-Series to become available.
 
 1. SSH to the *active* VM-Series firewall using the `VMSERIES_SSH` output value. 
 
@@ -132,16 +132,13 @@ You can now test the deployment by accessing the `workload-vm` that resides in t
 
     <img src="images/web.png" width="500">
 
-> [!NOTE]
-> The address within `EXTERNAL_LB_URL` is a forwarding rule on the external load balancer.  This rule forwards requests from the internet to the VM-Series untrust interface before it is allowed to the `workload-vm`.  
-
-
-2. Use the output `EXTERNAL_LB_SSH`  to open an SSH session through the VM-Series to the `workload-vm`.  
+2. Use the output `EXTERNAL_LB_SSH` to open an SSH session through the VM-Series to the `workload-vm`.  
     ```
     ssh paloalto@1.1.1.1 -i ~/.ssh/vmseries-tutorial
     ```
+
 > [!NOTE]
-> Like the web traffic, this traffic is forwarded through the VM-Series for inspection prior to reaching the `workload-vm`. 
+> The address within `EXTERNAL_LB_URL` & `EXTERNAL_LB_SSH` is the `inbound` forwarding rule on the external load balancer.  The VM-Series inspects and translates the request from the `inbound` forwarding rule to the `workload-vm`. 
 
 
 3. On the workload VM, run a preloaded script to test the failover mechanism across the VM-Series firewalls.
@@ -159,7 +156,7 @@ You can now test the deployment by accessing the `workload-vm` that resides in t
     ```
 
 > [!NOTE]
-> Egress traffic from the `workload-vm` is routed to the internal load balancer's forwarding rule.  The VM-Series inspects the traffic, and then translates the request to the egress forwarding rule on the external load balancer. 
+> Egress traffic from the `workload-vm` is routed to the internal load balancer's forwarding rule.  The VM-Series inspects and translates the request to the `outbound` forwarding rule on the external load balancer. 
 
 4. Login to the VM-Series firewalls using the `VMSERIES_ACTIVE` and `VMSERIES_PASSIVE` output values.
 
@@ -178,8 +175,7 @@ You can now test the deployment by accessing the `workload-vm` that resides in t
    3. When prompted, click **OK** to initiate the failover.</br>
         <img src="images/image4.png" width="285">
 
-
-7. You should notice your SSH session to the `workload-vm` is still active.  This indicates the session successfully failed over between the VM-Series firewalls.  The script output should also display the same source IP address.
+7. You should notice your SSH session to the `workload-vm` is still active.  This indicates the session successfully failed over between the VM-Series firewalls.
     ```
     Wed Mar 12 16:47:18 UTC 2023 -- Online -- Source IP = x.x.x.x
     Wed Mar 12 16:47:19 UTC 2023 -- Online -- Source IP = x.x.x.x
@@ -236,7 +232,7 @@ In Cloud Shell, deploy new virtual machine (`app-vm`) to a subnet within the tru
     STATUS: RUNNING</pre></p>
 
 > [!NOTE]
-> In the VM-Series NAT policy, the `INTERNAL_IP` will be set as the **translated** packet's destination address.  
+> In the VM-Series NAT policy, the `INTERNAL_IP` will be set as the **translated packet's** destination address.  
 
 
 ### Create Forwarding Rule
@@ -273,7 +269,7 @@ Create a forwarding rule (`fwd-rule-app-vm`) on the external load balancer.  Thi
     ```
     
 > [!NOTE]
-> In the VM-Series NAT policy, the forwarding rule address will be set as the **original** packet's destination address.  
+> In the firewall's NAT rule, the forwarding rule address is set as the **original packet's** destination address.  
 
 ### Create NAT Policy
 On the VM-Series, create a NAT policy to translate traffic destined the forwarding rule (`fwd-rule-app-vm`) to the internal IPv4 address of the `app-vm` IP address (i.e. `10.0.2.4`).
