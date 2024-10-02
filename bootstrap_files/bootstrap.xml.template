@@ -139,7 +139,7 @@
                   <enable>no</enable>
                 </adjust-tcp-mss>
                 <ip>
-                  <entry name="${external_lb_ip}/32"/>
+                  <entry name="${extlb_outbound_ip}/32"/>
                 </ip>
                 <comment>Outbound internet traffic through external LB</comment>
               </entry>
@@ -784,7 +784,7 @@
                     <member>any</member>
                   </source>
                   <destination>
-                    <member>${external_lb_ip}</member>
+                    <member>${extlb_inbound_ip}</member>
                   </destination>
                   <service>any</service>
                   <description>Internet inbound DNAT to test VM.</description>

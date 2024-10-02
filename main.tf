@@ -149,7 +149,7 @@ module "vpc_ha2" {
 }
 
 resource "google_compute_route" "default_to_vmseries" {
-  name         =  "${local.prefix}default-to-vmseries-intlb"
+  name         = "${local.prefix}default-to-vmseries-intlb"
   dest_range   = "0.0.0.0/0"
   network      = module.vpc_trust.network_id
   next_hop_ilb = google_compute_forwarding_rule.intlb.id

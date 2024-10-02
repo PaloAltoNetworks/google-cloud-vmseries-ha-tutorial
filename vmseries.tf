@@ -17,8 +17,8 @@ locals {
       ha2_private_ip            = cidrhost(var.cidr_ha2, 2)
       ha2_subnet_mask           = cidrnetmask(var.cidr_ha2)
       ha2_gateway_ip            = data.google_compute_subnetwork.ha2.gateway_address
-      extlb_outbound_ip            = google_compute_address.extlb_outbound_ip.address
-      extlb_inbound_ip            = google_compute_address.extlb_inbound_ip.address
+      extlb_outbound_ip         = google_compute_address.extlb_outbound_ip.address
+      extlb_inbound_ip          = google_compute_address.extlb_inbound_ip.address
       workload_vm               = cidrhost(var.cidr_trust, 5)
     }
 
@@ -33,8 +33,8 @@ locals {
       ha2_private_ip            = cidrhost(var.cidr_ha2, 3)
       ha2_subnet_mask           = cidrnetmask(var.cidr_ha2)
       ha2_gateway_ip            = data.google_compute_subnetwork.ha2.gateway_address
-      extlb_outbound_ip            = google_compute_address.extlb_outbound_ip.address
-      extlb_inbound_ip            = google_compute_address.extlb_inbound_ip.address
+      extlb_outbound_ip         = google_compute_address.extlb_outbound_ip.address
+      extlb_inbound_ip          = google_compute_address.extlb_inbound_ip.address
       workload_vm               = cidrhost(var.cidr_trust, 5)
     }
   }
@@ -67,7 +67,7 @@ data "template_file" "bootstrap_xml" {
   template = file("${path.module}/bootstrap_files/bootstrap.xml.template")
 
   vars = {
-    extlb_outbound_ip            = google_compute_address.extlb_outbound_ip.address
+    extlb_outbound_ip         = google_compute_address.extlb_outbound_ip.address
     extlb_inbound_ip          = google_compute_address.extlb_inbound_ip.address
     management_private_ip     = each.value.management_private_ip
     managementpeer_private_ip = each.value.managementpeer_private_ip
@@ -122,10 +122,10 @@ module "bootstrap" {
 
 # Generate random string to append to VM-Series name
 resource "random_string" "vmseries" {
-  length           = 6
-  min_numeric      = 3
-  min_lower        = 3
-  special          = false
+  length      = 6
+  min_numeric = 3
+  min_lower   = 3
+  special     = false
 }
 
 
