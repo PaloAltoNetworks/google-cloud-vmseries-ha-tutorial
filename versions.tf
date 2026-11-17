@@ -1,16 +1,18 @@
 terraform {
   required_version = "> 1.5"
+
   required_providers {
     google = {
       source  = "hashicorp/google"
-      version = ">=4.64, < 5.18"
+      version = "= 6.46.0"
     }
     google-beta = {
       source  = "hashicorp/google-beta"
-      version = "5.19.0"
+      version = "= 6.46.0"
     }
   }
 }
+
 
 provider "google" {
   project = var.project_id
