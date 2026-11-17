@@ -40,6 +40,13 @@ locals {
   }
 }
 
+# ----------------------------------------------------------------------------------------------------------------
+# Generate random string
+# ----------------------------------------------------------------------------------------------------------------
+
+resource "random_id" "vmseries" {
+  byte_length = 3
+}
 
 # ----------------------------------------------------------------------------------------------------------------
 # Create VM-Series bootstrap package. 
@@ -91,7 +98,7 @@ resource "local_file" "bootstrap_xml" {
 module "iam_service_account" {
   source             = "PaloAltoNetworks/swfw-modules/google//modules/iam_service_account"
   version            = "~> 2.0"
-  service_account_id = "${local.prefix}vmseries-sa"
+  service_account_id = "${local.prefix}vmseries-sa-${random_id.vmseries.hex}"
   project_id         = var.project_id
 }
 
@@ -219,8 +226,9 @@ resource "google_compute_region_backend_service" "intlb" {
   dynamic "backend" {
     for_each = { for k, v in module.vmseries : k => v.instance_group_self_link }
     content {
-      group    = backend.value
-      failover = false
+      group          = backend.value
+      failover       = false
+      balancing_mode = "CONNECTION"
     }
   }
 
@@ -280,11 +288,12 @@ resource "google_compute_region_backend_service" "extlb" {
   load_balancing_scheme = "EXTERNAL"
   health_checks         = [google_compute_region_health_check.vmseries.self_link]
   protocol              = "UNSPECIFIED"
-
+  
   dynamic "backend" {
     for_each = [for k, v in module.vmseries : module.vmseries[k].instance_group_self_link]
     content {
-      group = backend.value
+      group          = backend.value
+      balancing_mode = "CONNECTION"
     }
   }
 
